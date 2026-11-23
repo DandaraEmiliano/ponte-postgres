@@ -1,0 +1,42 @@
+services:
+  origem:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: clientes
+      POSTGRES_USER: demo
+      POSTGRES_PASSWORD: demo-local
+    volumes:
+      - origem:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo -d clientes"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+  destino:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: clientes
+      POSTGRES_USER: demo
+      POSTGRES_PASSWORD: demo-local
+    volumes:
+      - destino:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo -d clientes"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+  app:
+    build: .
+    depends_on:
+      origem:
+        condition: service_healthy
+      destino:
+        condition: service_healthy
+    environment:
+      PONTE_ORIGEM_URL: jdbc:postgresql://origem:5432/clientes
+      PONTE_DESTINO_URL: jdbc:postgresql://destino:5432/clientes
+    ports:
+      - "127.0.0.1:${PONTE_PORT:-8090}:8080"
+volumes:
+  origem:
+  destino:

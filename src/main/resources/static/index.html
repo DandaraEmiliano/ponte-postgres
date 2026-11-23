@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Painel de demonstração de uma migração online entre dois bancos PostgreSQL.">
+  <title>Ponte | Migração PostgreSQL</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="shell header-inner">
+      <a class="brand" href="/"><span class="mark" aria-hidden="true">↔</span>Ponte</a>
+      <span class="header-note">Laboratório PostgreSQL</span>
+    </div>
+  </header>
+  <main class="shell">
+    <section class="intro" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">MIGRAÇÃO DE CLIENTES</p>
+        <h1 id="page-title">Migração online</h1>
+        <p>Copie os registros, acompanhe as mudanças e troque o banco de leitura com segurança.</p>
+      </div>
+      <button id="start" class="button primary" disabled>Iniciar migração</button>
+    </section>
+
+    <p id="connection" class="notice error" role="status" hidden></p>
+    <p id="notice" class="notice" role="status" hidden></p>
+
+    <section class="pipeline" aria-label="Fluxo da migração">
+      <article class="card node">
+        <p class="eyebrow">BANCO DE ORIGEM</p>
+        <h2>Clientes atuais</h2>
+        <p>Todas as gravações entram aqui.</p>
+        <strong id="source-count">—</strong><span class="unit"> registros</span>
+      </article>
+      <article class="card node channel">
+        <p class="eyebrow">CÓPIA E REPLICAÇÃO</p>
+        <h2 id="phase">Aguardando</h2>
+        <p id="pending">— mudanças pendentes</p>
+        <progress id="copy-progress" value="0" max="100" aria-label="Progresso da cópia"></progress>
+        <small id="copy-label">Cópia ainda não iniciada</small>
+      </article>
+      <article class="card node">
+        <p class="eyebrow">BANCO DE DESTINO</p>
+        <h2>Clientes replicados</h2>
+        <p>Recebe lotes e mudanças da origem.</p>
+        <strong id="target-count">—</strong><span class="unit"> registros</span>
+      </article>
+    </section>
+
+    <div class="layout">
+      <div class="column">
+        <section class="card section" aria-labelledby="switch-title">
+          <div class="section-heading">
+            <h2 id="switch-title">Troca de leitura</h2>
+            <span id="route" class="tag">—</span>
+          </div>
+          <p id="gate">Carregando estado da migração…</p>
+          <div class="positions">
+            <span>Posição na origem <strong id="source-position">—</strong></span>
+            <span>Checkpoint no destino <strong id="target-position">—</strong></span>
+            <span>Atraso mais antigo <strong id="delay">—</strong></span>
+          </div>
+          <div class="actions">
+            <button id="pause" class="button secondary" disabled>Pausar replicação</button>
+            <button id="verify" class="button secondary" disabled>Conferir dados</button>
+            <button id="switch" class="button primary" disabled>Ler do destino</button>
+          </div>
+          <div id="audit" class="audit" hidden>
+            <h3>Última conferência</h3>
+            <p id="audit-summary"></p>
+            <ul id="audit-diff"></ul>
+          </div>
+        </section>
+
+        <section class="card section" aria-labelledby="clients-title">
+          <div class="section-heading">
+            <div>
+              <h2 id="clients-title">Clientes na origem</h2>
+              <p>Edite um cadastro enquanto a migração roda.</p>
+            </div>
+            <button id="add" class="button secondary">Novo cliente</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">ID</th><th scope="col">Nome</th><th scope="col">E-mail</th><th scope="col">Versão</th><th scope="col"><span class="sr-only">Ações</span></th></tr></thead>
+              <tbody id="clients"></tbody>
+            </table>
+          </div>
+          <div class="pagination">
+            <button id="prev" class="button text-button">Anterior</button>
+            <span id="page-range"></span>
+            <button id="next" class="button text-button">Próxima</button>
+          </div>
+        </section>
+      </div>
+
+      <aside class="column">
+        <section class="card section guide" aria-labelledby="guide-title">
+          <h2 id="guide-title">Experimente o fluxo</h2>
+          <ol>
+            <li>Inicie a cópia e pause a replicação.</li>
+            <li>Quando a cópia terminar, edite um cliente. Confira os dados para ver a diferença e o bloqueio da troca.</li>
+            <li>Retome a replicação. Com a fila vazia, confira de novo e ative a leitura no destino.</li>
+          </ol>
+          <button id="read" class="button secondary">Testar leitura da aplicação</button>
+          <p id="read-result" role="status" hidden></p>
+        </section>
+        <section class="card section" aria-labelledby="activity-title">
+          <h2 id="activity-title">Atividade</h2>
+          <p id="activity-empty">Os eventos da migração aparecem aqui.</p>
+          <ol id="activity" class="events"></ol>
+        </section>
+        <button id="reset" class="button text-button reset" disabled>Reiniciar migração</button>
+      </aside>
+    </div>
+  </main>
+
+  <dialog id="editor" aria-labelledby="editor-title">
+    <form id="client-form">
+      <h2 id="editor-title">Cliente</h2>
+      <label>Nome<input name="nome" required maxlength="100" autofocus></label>
+      <label>E-mail<input name="email" required type="email" maxlength="254"></label>
+      <p id="editor-error" class="error" role="alert" hidden></p>
+      <div class="actions dialog-actions">
+        <button id="remove" type="button" class="button danger">Excluir</button>
+        <button id="cancel" type="button" class="button secondary">Cancelar</button>
+        <button id="save" type="submit" class="button primary">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>
